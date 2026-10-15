@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<link rel="icon" href="data:,">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QUANTRADE SHOMER — Quantum Bridge</title>
 <style>
@@ -71,6 +72,7 @@ main{max-width:1200px;margin:0 auto;padding:32px}
   </div>
   <div class="system-badge" id="bridgeStatus">● ENTANGLED</div>
 </header>
+<div role="note" style="max-width:1200px;margin:10px auto;padding:10px 14px;background:#2b2415;color:#fef3c7;border:1px solid #80651e;border-radius:8px;font-size:12px">SIMULATION ONLY: signals and thresholds are user-selected demo values. No live market feed, brokerage connection, or real trade execution is connected.</div>
 
 <main>
   <div class="status-strip">
@@ -223,17 +225,17 @@ async function executeSignal(){
 
   const verdict=await bridge.executeSignal(prediction);
   if(verdict==="TRADE_EXECUTED"){
-    document.getElementById('verdictDisplay').textContent='EXECUTE';
+    document.getElementById('verdictDisplay').textContent='SIMULATED';
     document.getElementById('verdictDisplay').style.color='var(--green)';
-    document.getElementById('bridgeStatus').textContent='● TRADE EXECUTED';
-    log({type:'execute',title:'777 Logic Confirmed: Executing Trade',detail:`${symbol} ${direction} — ${(accuracy/100*100).toFixed(1)}% ≥ ${(threshold*100).toFixed(0)}%. Signal routed to KEIRA Core for live execution.`});
+    document.getElementById('bridgeStatus').textContent='● SIMULATION ACCEPTED';
+    log({type:'execute',title:'Simulation accepted — no live trade sent',detail:`${symbol} ${direction} — ${(accuracy/100*100).toFixed(1)}% ≥ ${(threshold*100).toFixed(0)}%. Demo signal accepted locally; no brokerage order was sent.`});
   }else{
     document.getElementById('verdictDisplay').textContent='HOLD';
     document.getElementById('verdictDisplay').style.color='var(--red)';
     document.getElementById('bridgeStatus').textContent='● SAFE MODE';
     log({type:'hold',title:'Safe Mode: Threshold not met',detail:`${symbol} ${direction} — ${(accuracy/100*100).toFixed(1)}% < ${(threshold*100).toFixed(0)}%. Capital protected. Position NOT opened.`});
   }
-  setTimeout(()=>{document.getElementById('bridgeStatus').textContent='● ENTANGLED';},1600);
+  setTimeout(()=>{document.getElementById('bridgeStatus').textContent='● DEMO READY';},1600);
   refreshStats();
 }
 
@@ -254,7 +256,7 @@ function resetBridge(){
   document.getElementById('lastSignalLabel').textContent='—';
   document.getElementById('accuracyFill').style.width='0%';
   document.getElementById('accDisplay').textContent='—';
-  document.getElementById('bridgeStatus').textContent='● ENTANGLED';
+  document.getElementById('bridgeStatus').textContent='● DEMO READY';
   log({type:'info',title:'Bridge reset complete',detail:'QuantumBridge state fully re-initialized. Threshold restored to user setting.'});
   refreshStats();
 }
