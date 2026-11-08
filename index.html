@@ -122,6 +122,14 @@ main{max-width:1200px;margin:0 auto;padding:32px}
             </select>
           </div>
           <div class="field">
+            <label>REFERENCE PRICE (USD)</label>
+            <input id="price" type="number" min="0.01" step="0.01" value="65000">
+          </div>
+          <div class="field">
+            <label>QUANTITY</label>
+            <input id="quantity" type="number" min="0.0001" step="0.0001" value="0.01">
+          </div>
+          <div class="field">
             <label>PREDICTION ACCURACY — <span id="accuracyVal">80.0%</span></label>
             <div class="threshold-row">
               <input type="range" id="accuracy" min="30" max="100" step="0.5" value="80" oninput="document.getElementById('accuracyVal').textContent=parseFloat(this.value).toFixed(1)+'%'">
@@ -185,6 +193,16 @@ class QuantumBridge{
   }
 }
 const bridge=new QuantumBridge();
+function waitBackend(){
+  return new Promise(resolve=>{
+    if(window.PortfolioBackend)return resolve(window.PortfolioBackend);
+    let tries=0;
+    const timer=setInterval(()=>{
+      if(window.PortfolioBackend){clearInterval(timer);resolve(window.PortfolioBackend);}
+      else if(++tries>40){clearInterval(timer);resolve(null);}
+    },150);
+  });
+}
 
 function log({type,title,detail}){
   const el=document.createElement('div');
@@ -209,9 +227,11 @@ async function executeSignal(){
   const direction=document.getElementById('direction').value;
   const accuracy=parseFloat(document.getElementById('accuracy').value);
   const threshold=parseInt(document.getElementById('threshold').value)/100;
+  const price=parseFloat(document.getElementById('price').value);
+  const quantity=parseFloat(document.getElementById('quantity').value);
   bridge.threshold=threshold;
 
-  log({type:'info',title:`Signal received — ${symbol} · ${direction}`,detail:`777-Model prediction accuracy: ${accuracy.toFixed(1)}%. Bridge threshold: ${(threshold*100).toFixed(0)}%.`});
+  log({type:'info',title:`Signal received — ${symbol} · ${direction}`,detail:`Model prediction accuracy: ${accuracy.toFixed(1)}%. Bridge threshold: ${(threshold*100).toFixed(0)}%. Reference price: ${price}. Quantity: ${quantity}.`});
 
   document.getElementById('lastSignalLabel').textContent=accuracy.toFixed(1)+'%';
   const fill=document.getElementById('accuracyFill');
@@ -221,21 +241,61 @@ async function executeSignal(){
   mark.style.left='calc('+(accuracy/100*100)+'% - 1px)';
 
   const prediction={accuracy:accuracy/100,symbol,direction};
-  await new Promise(r=>setTimeout(r,500));
-
   const verdict=await bridge.executeSignal(prediction);
-  if(verdict==="TRADE_EXECUTED"){
-    document.getElementById('verdictDisplay').textContent='SIMULATED';
-    document.getElementById('verdictDisplay').style.color='var(--green)';
-    document.getElementById('bridgeStatus').textContent='● SIMULATION ACCEPTED';
-    log({type:'execute',title:'Simulation accepted — no live trade sent',detail:`${symbol} ${direction} — ${(accuracy/100*100).toFixed(1)}% ≥ ${(threshold*100).toFixed(0)}%. Demo signal accepted locally; no brokerage order was sent.`});
-  }else{
+  if(verdict!=="TRADE_EXECUTED"){
     document.getElementById('verdictDisplay').textContent='HOLD';
     document.getElementById('verdictDisplay').style.color='var(--red)';
     document.getElementById('bridgeStatus').textContent='● SAFE MODE';
     log({type:'hold',title:'Safe Mode: Threshold not met',detail:`${symbol} ${direction} — ${(accuracy/100*100).toFixed(1)}% < ${(threshold*100).toFixed(0)}%. Capital protected. Position NOT opened.`});
+    refreshStats();
+    return;
   }
-  setTimeout(()=>{document.getElementById('bridgeStatus').textContent='● DEMO READY';},1600);
+  if(direction==='NEUTRAL'){
+    document.getElementById('verdictDisplay').textContent='NO ORDER';
+    document.getElementById('verdictDisplay').style.color='var(--muted)';
+    document.getElementById('bridgeStatus').textContent='● NEUTRAL';
+    log({type:'hold',title:'Neutral signal — no order',detail:'A neutral prediction cannot create a paper order. Position NOT opened.'});
+    refreshStats();
+    return;
+  }
+  if(!(price>0)||!(quantity>0)){
+    log({type:'hold',title:'Invalid paper order',detail:'Reference price and quantity must both be greater than zero.'});
+    refreshStats();
+    return;
+  }
+  const backend=await waitBackend();
+  if(!backend){
+    document.getElementById('verdictDisplay').textContent='OFFLINE';
+    document.getElementById('bridgeStatus').textContent='● BACKEND OFFLINE';
+    log({type:'hold',title:'Pipeline unavailable',detail:'The shared paper-order pipeline did not respond. No order was created.'});
+    refreshStats();
+    return;
+  }
+  try{
+    document.getElementById('verdictDisplay').textContent='QUEUED';
+    document.getElementById('bridgeStatus').textContent='● PAPER PIPELINE';
+    const job=await backend.createJob('market.paper',{symbol,side:direction==='LONG'?'buy':'sell',price,quantity,feeBps:5,slippageBps:2});
+    log({type:'info',title:'Paper order queued',detail:`Pipeline job ${job.id.slice(0,8)} created for ${symbol}. No live brokerage order is sent.`});
+    backend.watchJob(job.id,(current)=>{
+      if(current.status==='succeeded'&&current.result){
+        const r=current.result;
+        document.getElementById('verdictDisplay').textContent='PAPER FILL';
+        document.getElementById('verdictDisplay').style.color='var(--green)';
+        document.getElementById('bridgeStatus').textContent='● PAPER FILL ACCEPTED';
+        log({type:'execute',title:'Paper order filled — no live trade sent',detail:`${r.symbol} ${r.side} ${r.quantity} @ ${Number(r.fillPrice).toFixed(2)} — cash impact ${Number(r.cashImpact).toFixed(2)}, fee ${Number(r.fee).toFixed(2)}. Paper mode only.`});
+      }else if(current.status==='failed'){
+        document.getElementById('verdictDisplay').textContent='FAILED';
+        document.getElementById('bridgeStatus').textContent='● PIPELINE ERROR';
+        log({type:'hold',title:'Paper order rejected',detail:current.error||'Pipeline rejected the order.'});
+      }
+      refreshStats();
+    });
+  }catch(error){
+    document.getElementById('verdictDisplay').textContent='ERROR';
+    document.getElementById('bridgeStatus').textContent='● PIPELINE ERROR';
+    log({type:'hold',title:'Paper order failed',detail:error.message});
+  }
+  setTimeout(()=>{if(document.getElementById('bridgeStatus').textContent==='● PAPER FILL ACCEPTED')document.getElementById('bridgeStatus').textContent='● PAPER READY';},2200);
   refreshStats();
 }
 
@@ -256,7 +316,7 @@ function resetBridge(){
   document.getElementById('lastSignalLabel').textContent='—';
   document.getElementById('accuracyFill').style.width='0%';
   document.getElementById('accDisplay').textContent='—';
-  document.getElementById('bridgeStatus').textContent='● DEMO READY';
+  document.getElementById('bridgeStatus').textContent='● PAPER READY';
   log({type:'info',title:'Bridge reset complete',detail:'QuantumBridge state fully re-initialized. Threshold restored to user setting.'});
   refreshStats();
 }
