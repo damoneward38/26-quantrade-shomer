@@ -123,7 +123,11 @@ main{max-width:1200px;margin:0 auto;padding:32px}
           </div>
           <div class="field">
             <label>REFERENCE PRICE (USD)</label>
-            <input id="price" type="number" min="0.01" step="0.01" value="65000">
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="price" type="number" min="0.01" step="0.01" value="65000" style="flex:1">
+              <button class="preset" type="button" onclick="fetchLivePrice()">LIVE</button>
+            </div>
+            <div class="log-detail" id="priceSource">Paper price — use LIVE to load a real market quote.</div>
           </div>
           <div class="field">
             <label>QUANTITY</label>
@@ -141,7 +145,7 @@ main{max-width:1200px;margin:0 auto;padding:32px}
               <input type="range" id="threshold" min="50" max="99" step="1" value="80" oninput="document.getElementById('thresholdVal').textContent=this.value+'%'">
             </div>
           </div>
-          <button class="btn btn-execute" onclick="executeSignal()">⚡ EXECUTE SIGNAL VIA QUANTUM BRIDGE</button>
+          <button class="btn btn-execute" onclick="executeSignal()">⚡ EXECUTE SIGNAL VIA PAPER BRIDGE</button>
           <button class="btn btn-reset" onclick="resetBridge()">↺ Reset Bridge</button>
         </div>
       </div>
@@ -202,6 +206,30 @@ function waitBackend(){
       else if(++tries>40){clearInterval(timer);resolve(null);}
     },150);
   });
+}
+
+async function fetchLivePrice(){
+  const symbol=document.getElementById('symbol').value.trim();
+  const source=document.getElementById('priceSource');
+  if(!symbol){source.textContent='Enter a symbol first.';return;}
+  const backend=await waitBackend();
+  if(!backend||typeof backend.quote!=='function'){
+    source.textContent='Shared market integration is offline.';
+    log({type:'hold',title:'Live quote unavailable',detail:'The shared portfolio backend did not expose the market integration. Reference price unchanged.'});
+    return;
+  }
+  source.textContent='Fetching live quote…';
+  try{
+    const quote=await backend.quote(symbol,'auto');
+    const price=Number(quote.price);
+    if(!(price>0))throw new Error('Provider returned no numeric price.');
+    document.getElementById('price').value=price.toFixed(2);
+    source.textContent=`${quote.provider} · ${quote.symbol||symbol} · ${new Date(quote.asOf||Date.now()).toLocaleString()}`;
+    log({type:'info',title:`Live quote loaded — ${quote.symbol||symbol}`,detail:`${quote.provider} price ${price} ${quote.currency||''}. Paper reference updated; no live order was sent.`});
+  }catch(error){
+    source.textContent='Quote failed: '+error.message;
+    log({type:'hold',title:'Live quote failed',detail:error.message});
+  }
 }
 
 function log({type,title,detail}){
