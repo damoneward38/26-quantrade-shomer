@@ -1,10 +1,10 @@
-# QUANTRADE SHOMER — Quantum Bridge
+# QUANTRADE SHOMER — Paper Trading Bridge
 
 > Documentation for local export 26-quantrade-shomer. This is not a security certification or proof of production readiness.
 
 ## 1. Purpose and overview
 
-Application: QUANTRADE SHOMER — Quantum Bridge  
+Application: QUANTRADE SHOMER — Paper Trading Bridge  
 Local export folder: 26-quantrade-shomer  
 Entry page: index.html  
 Description from current HTML: Exported application interface; verify current source and workflows before production use.

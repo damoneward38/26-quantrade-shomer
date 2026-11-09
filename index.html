@@ -68,18 +68,18 @@ main{max-width:1200px;margin:0 auto;padding:32px}
   <div class="logo">⚛</div>
   <div>
     <h1>QUANTRADE SHOMER</h1>
-    <div style="font-size:11px;color:var(--muted);letter-spacing:2px">QUANTUM TRADES BRIDGE · 777-MODEL ↔ KEIRA CORE</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:2px">PAPER TRADES BRIDGE · MODEL SIGNALS ↔ LOCAL PAPER PIPELINE</div>
   </div>
-  <div class="system-badge" id="bridgeStatus">● ENTANGLED</div>
+  <div class="system-badge" id="bridgeStatus">● PAPER READY</div>
 </header>
-<div role="note" style="max-width:1200px;margin:10px auto;padding:10px 14px;background:#2b2415;color:#fef3c7;border:1px solid #80651e;border-radius:8px;font-size:12px">SIMULATION ONLY: signals and thresholds are user-selected demo values. No live market feed, brokerage connection, or real trade execution is connected.</div>
+<div role="note" style="max-width:1200px;margin:10px auto;padding:10px 14px;background:#2b2415;color:#fef3c7;border:1px solid #80651e;border-radius:8px;font-size:12px">PAPER MODE: model signals and confidence thresholds are user-supplied. Orders are processed by the local paper-order pipeline with no live brokerage connection.</div>
 
 <main>
   <div class="status-strip">
     <div class="stat-card">
       <div class="stat-label">Bridge Status</div>
-      <div class="stat-value" id="statStatus" style="color:var(--green)">ENTANGLED</div>
-      <div class="stat-sub">QuantumBridge v1.0 online</div>
+      <div class="stat-value" id="statStatus" style="color:var(--green)">PAPER READY</div>
+      <div class="stat-sub">PaperTrade Bridge v1.0 online</div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Confidence Threshold</div>
@@ -176,9 +176,9 @@ main{max-width:1200px;margin:0 auto;padding:32px}
 </main>
 
 <script>
-class QuantumBridge{
+class PaperTradeBridge{
   constructor(){
-    this.status="ENTANGLED";
+    this.status="PAPER_READY";
     this.threshold=0.80;
     this.history=[];
     this.executions=0;
@@ -192,7 +192,7 @@ class QuantumBridge{
     return decision;
   }
 }
-const bridge=new QuantumBridge();
+const bridge=new PaperTradeBridge();
 function waitBackend(){
   return new Promise(resolve=>{
     if(window.PortfolioBackend)return resolve(window.PortfolioBackend);
@@ -317,11 +317,11 @@ function resetBridge(){
   document.getElementById('accuracyFill').style.width='0%';
   document.getElementById('accDisplay').textContent='—';
   document.getElementById('bridgeStatus').textContent='● PAPER READY';
-  log({type:'info',title:'Bridge reset complete',detail:'QuantumBridge state fully re-initialized. Threshold restored to user setting.'});
+  log({type:'info',title:'Bridge reset complete',detail:'PaperTrade bridge state fully re-initialized. Threshold restored to user setting.'});
   refreshStats();
 }
 
-log({type:'info',title:'QuantumBridge v1.0 initialized',detail:'Status: ENTANGLED · Threshold: 80% · Designer: Damone Ward Senior · Purpose: links 777-Model to KEIRA Core.'});
+log({type:'info',title:'PaperTrade Bridge v1.0 initialized',detail:'Status: PAPER READY · Threshold: 80% · Orders route to the local paper pipeline. No live brokerage connection.'});
 refreshStats();
 </script>
 </body>
